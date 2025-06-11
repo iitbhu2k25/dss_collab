@@ -1,6 +1,6 @@
 'use client'
 import React, { useState, useRef, useEffect } from 'react';
-import {District, SubDistrict}from '@/app/contexts/stp_priority/admin/LocationContext';
+import { District, SubDistrict, Village, WellPoint } from '@/app/contexts/groundwater_assessment/admin/LocationContext';
 
 interface MultiSelectProps<T> {
   items: T[];
@@ -12,7 +12,7 @@ interface MultiSelectProps<T> {
   displayPattern?: (item: T) => string;
 }
 
-export const MultiSelect = <T extends District|SubDistrict = District|SubDistrict>({
+export const MultiSelect = <T extends District | SubDistrict | Village | WellPoint = District | SubDistrict | Village | WellPoint>({
   items,
   selectedItems,
   onSelectionChange,
@@ -69,8 +69,6 @@ export const MultiSelect = <T extends District|SubDistrict = District|SubDistric
     };
   }, []);
 
-  // Focus search input when dropdown opens and calculate position (only once) // Only depend on isOpen, not on selections
-
   // Reset search and position when dropdown closes
   useEffect(() => {
     if (!isOpen) {
@@ -79,9 +77,6 @@ export const MultiSelect = <T extends District|SubDistrict = District|SubDistric
       setDropdownPosition('bottom');
     }
   }, [isOpen]);
-
-  // Recalculate position on window resize (only if dropdown is open)
-  
 
   // Toggle dropdown
   const toggleDropdown = () => {
