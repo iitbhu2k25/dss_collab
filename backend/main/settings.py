@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "Basic",
     "mapplot",
     "authapp",
+    "gwa",
 ]
 
 MIDDLEWARE = [
