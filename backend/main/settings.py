@@ -28,10 +28,7 @@ INSTALLED_APPS = [
     "rest_framework.authtoken",
     "corsheaders",
     "Basic",
-    "raster_visual",
     "mapplot",
-    "gwa",
-    "stp_suitability",
     "authapp",
 ]
 
