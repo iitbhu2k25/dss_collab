@@ -1,4 +1,5 @@
 "use client";
+
 import React, {
   createContext,
   useContext,
@@ -23,13 +24,16 @@ export interface SubDistrict {
   id: string | number;
   name: string;
   districtId: string | number;
-  population: number;
+  districtName: string;
+  population?: number;
 }
 
 export interface Village {
   id: string | number;
   name: string;
   subDistrictId: string | number;
+  subDistrictName: string;
+  districtName: string;
   population: number;
 }
 
@@ -39,7 +43,12 @@ export interface WellPoint {
   villageId: string | number;
 }
 
-// Interface for selections return data
+export interface ClipRasters {
+  file_name: string;
+  layer_name: string;
+  workspace: string;
+}
+
 export interface SelectionsData {
   subDistricts: SubDistrict[];
   villages: Village[];
@@ -47,13 +56,6 @@ export interface SelectionsData {
   totalPopulation: number;
 }
 
-interface clip_rasters {
-  file_name: string;
-  layer_name: string;
-  workspace: string;
-}
-
-// Define the context type
 interface LocationContextType {
   states: State[];
   districts: District[];
@@ -67,9 +69,10 @@ interface LocationContextType {
   selectedWellPoints: number[];
   totalPopulation: number;
   selectionsLocked: boolean;
-  display_raster: clip_rasters[];
-  setdisplay_raster: (layer: clip_rasters[]) => void;
   isLoading: boolean;
+  error: string | null;
+  display_raster: ClipRasters[];
+  setdisplay_raster: (layer: ClipRasters[]) => void;
   handleStateChange: (stateId: number) => void;
   setSelectedDistricts: (districtIds: number[]) => void;
   setSelectedSubDistricts: (subDistrictIds: number[]) => void;
@@ -79,12 +82,10 @@ interface LocationContextType {
   resetSelections: () => void;
 }
 
-// Props for the LocationProvider component
 interface LocationProviderProps {
   children: ReactNode;
 }
 
-// Create the location context with default values
 const LocationContext = createContext<LocationContextType>({
   states: [],
   districts: [],
@@ -99,6 +100,7 @@ const LocationContext = createContext<LocationContextType>({
   totalPopulation: 0,
   selectionsLocked: false,
   isLoading: false,
+  error: null,
   display_raster: [],
   setdisplay_raster: () => {},
   handleStateChange: () => {},
@@ -110,256 +112,303 @@ const LocationContext = createContext<LocationContextType>({
   resetSelections: () => {},
 });
 
-// Create the provider component
 export const LocationProvider: React.FC<LocationProviderProps> = ({
   children,
 }) => {
-  // State for location data
   const [states, setStates] = useState<State[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [subDistricts, setSubDistricts] = useState<SubDistrict[]>([]);
   const [villages, setVillages] = useState<Village[]>([]);
   const [wellPoints, setWellPoints] = useState<WellPoint[]>([]);
-
-  // State for selected locations
   const [selectedState, setSelectedState] = useState<number | null>(null);
   const [selectedDistricts, setSelectedDistricts] = useState<number[]>([]);
   const [selectedSubDistricts, setSelectedSubDistricts] = useState<number[]>([]);
   const [selectedVillages, setSelectedVillages] = useState<number[]>([]);
   const [selectedWellPoints, setSelectedWellPoints] = useState<number[]>([]);
-
-  // State for additional information
   const [totalPopulation, setTotalPopulation] = useState<number>(0);
   const [selectionsLocked, setSelectionsLocked] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [display_raster, setdisplay_raster] = useState<ClipRasters[]>([]);
 
-  const [display_raster, setdisplay_raster] = useState<clip_rasters[]>([]);
-
+  // Fetch states on component mount
   useEffect(() => {
     const fetchStates = async () => {
       setIsLoading(true);
+      setError(null);
       try {
-        const response = await fetch("/api/stp/get_states?all_data=true");
+        console.log("Fetching states from /basics/state");
+        const response = await fetch("/basics/state", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
-
         const data = await response.json();
-        const stateData: State[] = data.map((state: any) => ({
-          id: state.id,
-          name: state.name,
-        }));
-
+        console.log("States response:", data);
+        const stateData: State[] = data.length > 0 ? data.map((state: any) => ({
+          id: state.state_code,
+          name: state.state_name,
+        })) : [];
         setStates(stateData);
-      } catch (error) {
+        if (data.length === 0) {
+          setError("No states found.");
+        }
+      } catch (error: any) {
         console.error("Error fetching states:", error);
+        setError(`Failed to fetch states: ${error.message}`);
       } finally {
         setIsLoading(false);
       }
     };
-
+    console.log("Triggering state fetch...");
     fetchStates();
   }, []);
 
-  // Load districts when state is selected
+  // Fetch districts when state is selected
   useEffect(() => {
     if (!selectedState) {
       setDistricts([]);
+      setSelectedDistricts([]);
+      setSubDistricts([]);
+      setSelectedSubDistricts([]);
+      setVillages([]);
+      setSelectedVillages([]);
+      setWellPoints([]);
+      setSelectedWellPoints([]);
+      setTotalPopulation(0);
       return;
     }
 
     const fetchDistricts = async () => {
       setIsLoading(true);
+      setError(null);
       try {
-        const response = await fetch("/api/stp/get_districts", {
+        console.log("Fetching districts for state:", selectedState);
+        const response = await fetch("/basics/district/", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            state: selectedState,
-            all_data: true,
-          }),
+          body: JSON.stringify({ state_code: selectedState }),
         });
-
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
-
         const data = await response.json();
+        console.log("Districts response:", data);
         const districtData: District[] = data.map((district: any) => ({
-          id: district.id,
-          name: district.name,
+          id: district.district_code,
+          name: district.district_name,
           stateId: selectedState,
         }));
-
-        setDistricts(districtData);
-      } catch (error) {
+        const sortedDistricts = [...districtData].sort((a, b) =>
+          a.name.localeCompare(b.name)
+        );
+        setDistricts(sortedDistricts);
+        if (data.length === 0) {
+          setError("No districts found for the selected state.");
+        }
+      } catch (error: any) {
         console.error("Error fetching districts:", error);
+        setError(`Failed to fetch districts: ${error.message}`);
       } finally {
         setIsLoading(false);
       }
     };
-
+    console.log("Triggering district fetch for state:", selectedState);
     fetchDistricts();
-
-    // Reset dependent selections
-    setSelectedDistricts([]);
-    setSelectedSubDistricts([]);
-    setSelectedVillages([]);
-    setSelectedWellPoints([]);
-    setTotalPopulation(0);
   }, [selectedState]);
 
-  // Load sub-districts when districts are selected
+  // Fetch sub-districts when districts are selected
   useEffect(() => {
     if (selectedDistricts.length === 0) {
       setSubDistricts([]);
+      setSelectedSubDistricts([]);
+      setVillages([]);
+      setSelectedVillages([]);
+      setWellPoints([]);
+      setSelectedWellPoints([]);
+      setTotalPopulation(0);
       return;
     }
 
-    setIsLoading(true);
-
     const fetchSubDistricts = async () => {
+      setIsLoading(true);
+      setError(null);
       try {
-        const response = await fetch("/api/stp/get_sub_districts/", {
+        console.log("Fetching sub-districts for districts:", selectedDistricts);
+        const response = await fetch("/basics/subdistrict/", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            districts: selectedDistricts,
-          }),
+          body: JSON.stringify({ district_code: selectedDistricts }),
         });
-
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
-
         const data = await response.json();
-        const subDistrictData: SubDistrict[] = data.map((subDistrict: any) => ({
-          id: subDistrict.id,
-          name: subDistrict.name,
-          districtId: selectedDistricts[0], // Adjust based on data structure
-          population: subDistrict.population || 0,
-        }));
-
-        setSubDistricts(subDistrictData);
-      } catch (error) {
+        console.log("Sub-districts response:", data);
+        const districtMap = new Map(
+          districts.map((district) => [district.id.toString(), district.name])
+        );
+        const subDistrictData: SubDistrict[] = data.map((subDistrict: any) => {
+          const districtId = subDistrict.district_code.toString();
+          return {
+            id: subDistrict.subdistrict_code,
+            name: subDistrict.subdistrict_name,
+            districtId: parseInt(districtId),
+            districtName: districtMap.get(districtId) || "Unknown District",
+            population: subDistrict.population || 0,
+          };
+        });
+        const sortedSubDistricts = [...subDistrictData].sort((a, b) => {
+          const districtComparison = a.districtName.localeCompare(b.districtName);
+          if (districtComparison !== 0) return districtComparison;
+          return a.name.localeCompare(b.name);
+        });
+        setSubDistricts(sortedSubDistricts);
+        if (data.length === 0) {
+          setError("No sub-districts found for the selected districts.");
+        }
+      } catch (error: any) {
         console.error("Error fetching sub-districts:", error);
+        setError(`Failed to fetch sub-districts: ${error.message}`);
       } finally {
         setIsLoading(false);
       }
     };
-
+    console.log("Triggering sub-district fetch for districts:", selectedDistricts);
     fetchSubDistricts();
+  }, [selectedDistricts, districts]);
 
-    // Reset dependent selections
-    setSelectedSubDistricts([]);
-    setSelectedVillages([]);
-    setSelectedWellPoints([]);
-    setTotalPopulation(0);
-  }, [selectedDistricts]);
-
-  // Load villages when sub-districts are selected
+  // Fetch villages when sub-districts are selected
   useEffect(() => {
     if (selectedSubDistricts.length === 0) {
       setVillages([]);
+      setSelectedVillages([]);
+      setWellPoints([]);
+      setSelectedWellPoints([]);
+      setTotalPopulation(0);
       return;
     }
 
-    setIsLoading(true);
-
     const fetchVillages = async () => {
+      setIsLoading(true);
+      setError(null);
       try {
-        const response = await fetch("/api/stp/get_villages/", {
+        console.log("Fetching villages for sub-districts:", selectedSubDistricts);
+        const response = await fetch("/basics/village/", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            subDistricts: selectedSubDistricts,
-          }),
+          body: JSON.stringify({ subdistrict_code: selectedSubDistricts }),
         });
-
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
-
         const data = await response.json();
-        const villageData: Village[] = data.map((village: any) => ({
-          id: village.id,
-          name: village.name,
-          subDistrictId: selectedSubDistricts[0], // Adjust based on data structure
-          population: village.population || 0,
-        }));
-
-        setVillages(villageData);
-      } catch (error) {
+        console.log("Villages response:", data);
+        const subDistrictMap = new Map(
+          subDistricts.map((sd) => [
+            sd.id.toString(),
+            { name: sd.name, districtName: sd.districtName },
+          ])
+        );
+        const villageData: Village[] = data.map((village: any) => {
+          const subDistrictId = village.subdistrict_code.toString();
+          const subDistrictInfo = subDistrictMap.get(subDistrictId);
+          return {
+            id: village.village_code,
+            name: village.village_name,
+            subDistrictId: parseInt(subDistrictId),
+            subDistrictName: subDistrictInfo?.name || "Unknown SubDistrict",
+            districtName: subDistrictInfo?.districtName || "Unknown District",
+            population: village.population_2011 || 0,
+          };
+        });
+        const sortedVillages = [...villageData].sort((a, b) => {
+          const districtComparison = a.districtName.localeCompare(b.districtName);
+          if (districtComparison !== 0) return districtComparison;
+          const subDistrictComparison = a.subDistrictName.localeCompare(
+            b.subDistrictName
+          );
+          if (subDistrictComparison !== 0) return subDistrictComparison;
+          return a.name.localeCompare(b.name);
+        });
+        setVillages(sortedVillages);
+        if (data.length === 0) {
+          setError("No villages found for the selected sub-districts.");
+        }
+      } catch (error: any) {
         console.error("Error fetching villages:", error);
+        setError(`Failed to fetch villages: ${error.message}`);
       } finally {
         setIsLoading(false);
       }
     };
-
     fetchVillages();
+  }, [selectedSubDistricts, subDistricts]);
 
-    // Reset dependent selections
-    setSelectedVillages([]);
-    setSelectedWellPoints([]);
-  }, [selectedSubDistricts]);
-
-  // Load well points when villages are selected
+  // Fetch well points when villages are selected
   useEffect(() => {
     if (selectedVillages.length === 0) {
       setWellPoints([]);
+      setSelectedWellPoints([]);
       return;
     }
 
-    setIsLoading(true);
-
     const fetchWellPoints = async () => {
+      setIsLoading(true);
+      setError(null);
       try {
+        console.log("Fetching well points for villages:", selectedVillages);
         const response = await fetch("/api/stp/get_well_points/", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            villages: selectedVillages,
-          }),
+          body: JSON.stringify({ villages: selectedVillages }),
         });
-
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
-
         const data = await response.json();
+        console.log("Well points response:", data);
         const wellPointData: WellPoint[] = data.map((wellPoint: any) => ({
           id: wellPoint.id,
           name: wellPoint.name,
-          villageId: selectedVillages[0], // Adjust based on data structure
+          villageId: selectedVillages.includes(Number(wellPoint.village_id))
+            ? Number(wellPoint.village_id)
+            : selectedVillages[0],
         }));
-
         setWellPoints(wellPointData);
-      } catch (error) {
+        if (data.length === 0) {
+          setError("No well points found for the selected villages.");
+        }
+      } catch (error: any) {
         console.error("Error fetching well points:", error);
+        setError(`Failed to fetch well points: ${error.message}`);
       } finally {
         setIsLoading(false);
       }
     };
-
     fetchWellPoints();
-
-    // Reset dependent selections
-    setSelectedWellPoints([]);
   }, [selectedVillages]);
 
+  // Fetch raster data when selections are locked
   useEffect(() => {
-    const disp_raster = async () => {
-      if (selectionsLocked === true) {
-        console.log("Starting fetch...");
+    const fetchRaster = async () => {
+      if (selectionsLocked && selectedSubDistricts.length > 0) {
+        setIsLoading(true);
+        setError(null);
         try {
+          console.log("Fetching raster data for sub-districts:", selectedSubDistricts);
           const response = await fetch("/api/stp_operation/stp_visual_display", {
             method: "POST",
             headers: {
@@ -370,19 +419,24 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
               place: "sub_district",
             }),
           });
-
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
           const data = await response.json();
+          console.log("Raster data response:", data);
           setdisplay_raster(data);
-        } catch (error) {
-          console.error("Error:", error);
+        } catch (error: any) {
+          console.error("Error fetching raster data:", error);
+          setError(`Failed to fetch raster data: ${error.message}`);
+        } finally {
+          setIsLoading(false);
         }
       }
     };
-
-    disp_raster();
+    fetchRaster();
   }, [selectionsLocked, selectedSubDistricts]);
 
-  // Calculate total population based on selected villages (or sub-districts if no villages selected)
+  // Calculate total population based on selected villages
   useEffect(() => {
     if (selectedVillages.length > 0) {
       const selectedVillageObjects = villages.filter((village) =>
@@ -393,50 +447,47 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
         0
       );
       setTotalPopulation(total);
-    } else if (selectedSubDistricts.length > 0) {
-      const selectedSubDistrictObjects = subDistricts.filter((subDistrict) =>
-        selectedSubDistricts.includes(Number(subDistrict.id))
-      );
-      const total = selectedSubDistrictObjects.reduce(
-        (sum, subDistrict) => sum + subDistrict.population,
-        0
-      );
-      setTotalPopulation(total);
     } else {
       setTotalPopulation(0);
     }
-  }, [selectedSubDistricts, selectedVillages, subDistricts, villages]);
+  }, [selectedVillages, villages]);
 
   // Handle state selection
   const handleStateChange = (stateId: number): void => {
+    console.log("State changed to:", stateId);
     setSelectedState(stateId);
     setSelectedDistricts([]);
     setSelectedSubDistricts([]);
     setSelectedVillages([]);
     setSelectedWellPoints([]);
+    setTotalPopulation(0);
     setSelectionsLocked(false);
+    setdisplay_raster([]);
   };
 
   // Lock selections and return selected data
   const confirmSelections = (): SelectionsData | null => {
     if (selectedSubDistricts.length === 0) {
+      console.log("Cannot confirm: No sub-districts selected");
+      setError("Please select at least one sub-district.");
       return null;
     }
-
     const selectedSubDistrictObjects = subDistricts.filter((subDistrict) =>
       selectedSubDistricts.includes(Number(subDistrict.id))
     );
-
     const selectedVillageObjects = villages.filter((village) =>
       selectedVillages.includes(Number(village.id))
     );
-
     const selectedWellPointObjects = wellPoints.filter((wellPoint) =>
       selectedWellPoints.includes(Number(wellPoint.id))
     );
-
+    console.log("Confirming selections:", {
+      subDistricts: selectedSubDistrictObjects,
+      villages: selectedVillageObjects,
+      wellPoints: selectedWellPointObjects,
+      totalPopulation,
+    });
     setSelectionsLocked(true);
-
     return {
       subDistricts: selectedSubDistrictObjects,
       villages: selectedVillageObjects,
@@ -447,6 +498,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
 
   // Reset all selections
   const resetSelections = (): void => {
+    console.log("Resetting all selections");
     setSelectedState(null);
     setSelectedDistricts([]);
     setSelectedSubDistricts([]);
@@ -455,9 +507,9 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
     setTotalPopulation(0);
     setSelectionsLocked(false);
     setdisplay_raster([]);
+    setError(null);
   };
 
-  // Context value
   const contextValue: LocationContextType = {
     states,
     districts,
@@ -472,6 +524,9 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
     totalPopulation,
     selectionsLocked,
     isLoading,
+    error,
+    display_raster,
+    setdisplay_raster,
     handleStateChange,
     setSelectedDistricts,
     setSelectedSubDistricts,
@@ -479,8 +534,6 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
     setSelectedWellPoints,
     confirmSelections,
     resetSelections,
-    display_raster,
-    setdisplay_raster,
   };
 
   return (
@@ -490,7 +543,6 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
   );
 };
 
-// Custom hook to use the location context
 export const useLocation = (): LocationContextType => {
   const context = useContext(LocationContext);
   if (context === undefined) {
