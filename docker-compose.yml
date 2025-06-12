@@ -32,6 +32,8 @@ services:
     depends_on:
       - fast_db
       - geoserver
+
+      
     
   db:
     image: postgres:16-alpine

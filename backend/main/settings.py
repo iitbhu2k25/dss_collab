@@ -164,7 +164,8 @@ ALLOWED_HOSTS = [
     '192.168.1.5',
     '0.0.0.0',
     '172.16.32.94',
-    '172.22.176.1'  # Add this for broader access
+    '172.22.176.1',
+    '172.24.0.1' # Add this for broader access
     # Add any other IPs you need
 ]
 # Media files (User uploaded files)
