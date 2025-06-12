@@ -17,6 +17,10 @@ const nextConfig: NextConfig = {
         destination: "http://172.24.0.1:9000/basics/:path*",
       },
       {
+        source: "/gwa/:path*",
+        destination: "http://172.24.0.1:9000/gwa/:path*",
+      },
+      {
         source: "/auth/:path*",
         destination: "http://172.24.0.1:9000/auth/:path*",
       },

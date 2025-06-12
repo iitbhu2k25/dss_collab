@@ -5,6 +5,7 @@ import { MultiSelect } from "./Multiselect";
 import { useLocation, SubDistrict, Village, WellPoint } from "@/app/contexts/groundwater_assessment/admin/LocationContext";
 
 interface DataSelectionProps {
+  step: number;
   onConfirm?: (selectedData: {
     subDistricts: SubDistrict[];
     villages: Village[];

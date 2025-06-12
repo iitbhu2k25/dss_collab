@@ -10,4 +10,5 @@ urlpatterns = [
     # path("api/gwa/", include("gwa.urls")), 
     
     path("auth/", include("authapp.urls")),
+    path("gwa/", include("gwa.urls")),
 ]

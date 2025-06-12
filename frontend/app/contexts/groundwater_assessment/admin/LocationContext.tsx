@@ -356,50 +356,52 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
   }, [selectedSubDistricts, subDistricts]);
 
   // Fetch well points when villages are selected
-  useEffect(() => {
-    if (selectedVillages.length === 0) {
-      setWellPoints([]);
-      setSelectedWellPoints([]);
-      return;
-    }
+  // Fetch well points when villages are selected
+useEffect(() => {
+  if (selectedVillages.length === 0) {
+    setWellPoints([]);
+    setSelectedWellPoints([]);
+    return;
+  }
 
-    const fetchWellPoints = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        console.log("Fetching well points for villages:", selectedVillages);
-        const response = await fetch("/api/stp/get_well_points/", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ villages: selectedVillages }),
-        });
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        const data = await response.json();
-        console.log("Well points response:", data);
-        const wellPointData: WellPoint[] = data.map((wellPoint: any) => ({
-          id: wellPoint.id,
-          name: wellPoint.name,
-          villageId: selectedVillages.includes(Number(wellPoint.village_id))
-            ? Number(wellPoint.village_id)
-            : selectedVillages[0],
-        }));
-        setWellPoints(wellPointData);
-        if (data.length === 0) {
-          setError("No well points found for the selected villages.");
-        }
-      } catch (error: any) {
-        console.error("Error fetching well points:", error);
-        setError(`Failed to fetch well points: ${error.message}`);
-      } finally {
-        setIsLoading(false);
+  const fetchWellPoints = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      console.log("Fetching well points for villages:", selectedVillages);
+      const response = await fetch("/gwa/wells/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ village_code: selectedVillages }),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
       }
-    };
-    fetchWellPoints();
-  }, [selectedVillages]);
+      const data = await response.json();
+      console.log("Well points response:", data);
+      const wellPointData: WellPoint[] = data.map((well: any) => ({
+        id: well.FID_clip, // Use FID_clip as the unique identifier
+        name: well.HYDROGRAPH, // Use HYDROGRAPH for well name
+        villageId: well.village_code, // Use village_code from response
+      }));
+      const sortedWellPoints = [...wellPointData].sort((a, b) =>
+        a.name.localeCompare(b.name)
+      );
+      setWellPoints(sortedWellPoints);
+      if (data.length === 0) {
+        setError("No well points found for the selected villages.");
+      }
+    } catch (error: any) {
+      console.error("Error fetching well points:", error);
+      setError(`Failed to fetch well points: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  fetchWellPoints();
+}, [selectedVillages]);
 
   // Fetch raster data when selections are locked
   useEffect(() => {

@@ -41,19 +41,23 @@ export default function GroundwaterAssessmentAdmin() {
 
         {/* Main Content */}
         <main className="container mx-auto p-2 flex-grow">
-          {/* Conditional Main Content (Step 1 only) */}
-          {activeStep === 1 && (
-            <div className="flex gap-4 mt-4 mr-4 ml-4">
-              {/* Left Panel */}
-              <div className="w-3/5 bg-white p-6 rounded-lg shadow-md">
-                <DataSelection />
-              </div>
-              {/* Right Panel */}
-              <div className="flex-1 bg-white p-6 rounded-lg shadow-md">
-                <Map />
-              </div>
+          <div className="flex gap-4 mt-4 mr-4 -ml-40">
+            {/* Left Panel: DataSelection for step 1, placeholder for steps 2–5 */}
+            <div className="w-3/5 bg-white p-6 rounded-lg shadow-md">
+              {activeStep === 1 ? (
+                <DataSelection step={activeStep} />
+              ) : (
+                <div className="text-gray-500">
+                  <h2 className="text-xl font-semibold mb-4">{steps[activeStep - 1].name}</h2>
+                  <p>Content for this step is not yet implemented.</p>
+                </div>
+              )}
             </div>
-          )}
+            {/* Right Panel: Map for all steps */}
+            <div className="flex-1 bg-white p-6 rounded-lg shadow-md -mr-15">
+              <Map />
+            </div>
+          </div>
         </main>
 
         {/* Step Navigation */}
