@@ -127,7 +127,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://192.168.1.2:3000",
-    "http://127.0.0.1:3000",  # Add this
+    "http://127.0.0.1:3000",
+    "http://172.20.23.182:3000",  # Add this
     # Add your frontend domain here
 ]
 CORS_ALLOW_CREDENTIALS = True
@@ -165,7 +166,8 @@ ALLOWED_HOSTS = [
     '0.0.0.0',
     '172.16.32.94',
     '172.22.176.1',
-    '172.24.0.1' # Add this for broader access
+    '172.24.0.1',
+    '172.20.23.182' # Add this for broader access
     # Add any other IPs you need
 ]
 # Media files (User uploaded files)

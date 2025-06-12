@@ -2,14 +2,12 @@
 
 import React from "react";
 import { MultiSelect } from "./Multiselect";
-import { useLocation, SubDistrict, Village, WellPoint } from "@/app/contexts/groundwater_assessment/admin/LocationContext";
+import { useLocation, SubDistrict } from "@/app/contexts/groundwater_assessment/admin/LocationContext";
 
 interface DataSelectionProps {
   step: number;
   onConfirm?: (selectedData: {
     subDistricts: SubDistrict[];
-    villages: Village[];
-    wellPoints: WellPoint[];
     totalPopulation: number;
   }) => void;
   onReset?: () => void;
@@ -20,21 +18,15 @@ const DataSelection: React.FC<DataSelectionProps> = ({ onConfirm, onReset }) => 
     states,
     districts,
     subDistricts,
-    villages,
-    wellPoints,
     selectedState,
     selectedDistricts,
     selectedSubDistricts,
-    selectedVillages,
-    selectedWellPoints,
     selectionsLocked,
     isLoading,
     error,
     handleStateChange,
     setSelectedDistricts,
     setSelectedSubDistricts,
-    setSelectedVillages,
-    setSelectedWellPoints,
     confirmSelections,
     resetSelections,
   } = useLocation();
@@ -70,20 +62,6 @@ const DataSelection: React.FC<DataSelectionProps> = ({ onConfirm, onReset }) => 
     }
   };
 
-  const handleVillagesChange = (selectedIds: number[]): void => {
-    if (!selectionsLocked) {
-      console.log("Selected villages:", selectedIds);
-      setSelectedVillages(selectedIds);
-    }
-  };
-
-  const handleWellPointsChange = (selectedIds: number[]): void => {
-    if (!selectionsLocked) {
-      console.log("Selected well points:", selectedIds);
-      setSelectedWellPoints(selectedIds);
-    }
-  };
-
   const handleConfirm = (): void => {
     if (selectedSubDistricts.length > 0 && !selectionsLocked) {
       console.log("Confirming selections...");
@@ -106,14 +84,6 @@ const DataSelection: React.FC<DataSelectionProps> = ({ onConfirm, onReset }) => 
 
   const formatSubDistrictDisplay = (subDistrict: SubDistrict): string => {
     return `${subDistrict.name}`;
-  };
-
-  const formatVillageDisplay = (village: Village): string => {
-    return `${village.name}`;
-  };
-
-  const formatWellPointDisplay = (wellPoint: WellPoint): string => {
-    return `${wellPoint.name}`;
   };
 
   return (
@@ -169,28 +139,6 @@ const DataSelection: React.FC<DataSelectionProps> = ({ onConfirm, onReset }) => 
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <MultiSelect
-          items={villages}
-          selectedItems={selectedVillages}
-          onSelectionChange={handleVillagesChange}
-          label="Village"
-          placeholder="--Choose Villages--"
-          disabled={selectedSubDistricts.length === 0 || selectionsLocked || isLoading}
-          displayPattern={formatVillageDisplay}
-        />
-
-        <MultiSelect
-          items={wellPoints}
-          selectedItems={selectedWellPoints}
-          onSelectionChange={handleWellPointsChange}
-          label="Well Point"
-          placeholder="--Choose Well Points--"
-          disabled={selectedVillages.length === 0 || selectionsLocked || isLoading}
-          displayPattern={formatWellPointDisplay}
-        />
-      </div>
-
       <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
         <h3 className="text-md font-medium text-gray-800 mb-2">Selected Locations</h3>
         <div className="space-y-2 text-sm text-gray-700">
@@ -217,28 +165,6 @@ const DataSelection: React.FC<DataSelectionProps> = ({ onConfirm, onReset }) => 
                 : subDistricts
                     .filter((sd) => selectedSubDistricts.includes(Number(sd.id)))
                     .map((sd) => sd.name)
-                    .join(", ")
-              : "None"}
-          </p>
-          <p>
-            <span className="font-medium">Villages:</span>{" "}
-            {selectedVillages.length > 0
-              ? selectedVillages.length === villages.length
-                ? "All Villages"
-                : villages
-                    .filter((v) => selectedVillages.includes(Number(v.id)))
-                    .map((v) => v.name)
-                    .join(", ")
-              : "None"}
-          </p>
-          <p>
-            <span className="font-medium">Well Points:</span>{" "}
-            {selectedWellPoints.length > 0
-              ? selectedWellPoints.length === wellPoints.length
-                ? "All Well Points"
-                : wellPoints
-                    .filter((w) => selectedWellPoints.includes(Number(w.id)))
-                    .map((w) => w.name)
                     .join(", ")
               : "None"}
           </p>

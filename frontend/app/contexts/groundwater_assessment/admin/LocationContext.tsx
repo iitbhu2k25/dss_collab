@@ -28,31 +28,8 @@ export interface SubDistrict {
   population?: number;
 }
 
-export interface Village {
-  id: string | number;
-  name: string;
-  subDistrictId: string | number;
-  subDistrictName: string;
-  districtName: string;
-  population: number;
-}
-
-export interface WellPoint {
-  id: string | number;
-  name: string;
-  villageId: string | number;
-}
-
-export interface ClipRasters {
-  file_name: string;
-  layer_name: string;
-  workspace: string;
-}
-
 export interface SelectionsData {
   subDistricts: SubDistrict[];
-  villages: Village[];
-  wellPoints: WellPoint[];
   totalPopulation: number;
 }
 
@@ -60,24 +37,16 @@ interface LocationContextType {
   states: State[];
   districts: District[];
   subDistricts: SubDistrict[];
-  villages: Village[];
-  wellPoints: WellPoint[];
   selectedState: number | null;
   selectedDistricts: number[];
   selectedSubDistricts: number[];
-  selectedVillages: number[];
-  selectedWellPoints: number[];
   totalPopulation: number;
   selectionsLocked: boolean;
   isLoading: boolean;
   error: string | null;
-  display_raster: ClipRasters[];
-  setdisplay_raster: (layer: ClipRasters[]) => void;
   handleStateChange: (stateId: number) => void;
   setSelectedDistricts: (districtIds: number[]) => void;
   setSelectedSubDistricts: (subDistrictIds: number[]) => void;
-  setSelectedVillages: (villageIds: number[]) => void;
-  setSelectedWellPoints: (wellPointIds: number[]) => void;
   confirmSelections: () => SelectionsData | null;
   resetSelections: () => void;
 }
@@ -90,24 +59,16 @@ const LocationContext = createContext<LocationContextType>({
   states: [],
   districts: [],
   subDistricts: [],
-  villages: [],
-  wellPoints: [],
   selectedState: null,
   selectedDistricts: [],
   selectedSubDistricts: [],
-  selectedVillages: [],
-  selectedWellPoints: [],
   totalPopulation: 0,
   selectionsLocked: false,
   isLoading: false,
   error: null,
-  display_raster: [],
-  setdisplay_raster: () => {},
   handleStateChange: () => {},
   setSelectedDistricts: () => {},
   setSelectedSubDistricts: () => {},
-  setSelectedVillages: () => {},
-  setSelectedWellPoints: () => {},
   confirmSelections: () => null,
   resetSelections: () => {},
 });
@@ -118,18 +79,13 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
   const [states, setStates] = useState<State[]>([]);
   const [districts, setDistricts] = useState<District[]>([]);
   const [subDistricts, setSubDistricts] = useState<SubDistrict[]>([]);
-  const [villages, setVillages] = useState<Village[]>([]);
-  const [wellPoints, setWellPoints] = useState<WellPoint[]>([]);
   const [selectedState, setSelectedState] = useState<number | null>(null);
   const [selectedDistricts, setSelectedDistricts] = useState<number[]>([]);
   const [selectedSubDistricts, setSelectedSubDistricts] = useState<number[]>([]);
-  const [selectedVillages, setSelectedVillages] = useState<number[]>([]);
-  const [selectedWellPoints, setSelectedWellPoints] = useState<number[]>([]);
   const [totalPopulation, setTotalPopulation] = useState<number>(0);
   const [selectionsLocked, setSelectionsLocked] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [display_raster, setdisplay_raster] = useState<ClipRasters[]>([]);
 
   // Fetch states on component mount
   useEffect(() => {
@@ -175,10 +131,6 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
       setSelectedDistricts([]);
       setSubDistricts([]);
       setSelectedSubDistricts([]);
-      setVillages([]);
-      setSelectedVillages([]);
-      setWellPoints([]);
-      setSelectedWellPoints([]);
       setTotalPopulation(0);
       return;
     }
@@ -228,10 +180,6 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
     if (selectedDistricts.length === 0) {
       setSubDistricts([]);
       setSelectedSubDistricts([]);
-      setVillages([]);
-      setSelectedVillages([]);
-      setWellPoints([]);
-      setSelectedWellPoints([]);
       setTotalPopulation(0);
       return;
     }
@@ -263,7 +211,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
             name: subDistrict.subdistrict_name,
             districtId: parseInt(districtId),
             districtName: districtMap.get(districtId) || "Unknown District",
-            population: subDistrict.population || 0,
+ionato: subDistrict.population || 0,
           };
         });
         const sortedSubDistricts = [...subDistrictData].sort((a, b) => {
@@ -286,173 +234,21 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
     fetchSubDistricts();
   }, [selectedDistricts, districts]);
 
-  // Fetch villages when sub-districts are selected
+  // Calculate total population based on selected sub-districts
   useEffect(() => {
-    if (selectedSubDistricts.length === 0) {
-      setVillages([]);
-      setSelectedVillages([]);
-      setWellPoints([]);
-      setSelectedWellPoints([]);
-      setTotalPopulation(0);
-      return;
-    }
-
-    const fetchVillages = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        console.log("Fetching villages for sub-districts:", selectedSubDistricts);
-        const response = await fetch("/basics/village/", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ subdistrict_code: selectedSubDistricts }),
-        });
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        const data = await response.json();
-        console.log("Villages response:", data);
-        const subDistrictMap = new Map(
-          subDistricts.map((sd) => [
-            sd.id.toString(),
-            { name: sd.name, districtName: sd.districtName },
-          ])
-        );
-        const villageData: Village[] = data.map((village: any) => {
-          const subDistrictId = village.subdistrict_code.toString();
-          const subDistrictInfo = subDistrictMap.get(subDistrictId);
-          return {
-            id: village.village_code,
-            name: village.village_name,
-            subDistrictId: parseInt(subDistrictId),
-            subDistrictName: subDistrictInfo?.name || "Unknown SubDistrict",
-            districtName: subDistrictInfo?.districtName || "Unknown District",
-            population: village.population_2011 || 0,
-          };
-        });
-        const sortedVillages = [...villageData].sort((a, b) => {
-          const districtComparison = a.districtName.localeCompare(b.districtName);
-          if (districtComparison !== 0) return districtComparison;
-          const subDistrictComparison = a.subDistrictName.localeCompare(
-            b.subDistrictName
-          );
-          if (subDistrictComparison !== 0) return subDistrictComparison;
-          return a.name.localeCompare(b.name);
-        });
-        setVillages(sortedVillages);
-        if (data.length === 0) {
-          setError("No villages found for the selected sub-districts.");
-        }
-      } catch (error: any) {
-        console.error("Error fetching villages:", error);
-        setError(`Failed to fetch villages: ${error.message}`);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchVillages();
-  }, [selectedSubDistricts, subDistricts]);
-
-  // Fetch well points when villages are selected
-  // Fetch well points when villages are selected
-useEffect(() => {
-  if (selectedVillages.length === 0) {
-    setWellPoints([]);
-    setSelectedWellPoints([]);
-    return;
-  }
-
-  const fetchWellPoints = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      console.log("Fetching well points for villages:", selectedVillages);
-      const response = await fetch("/gwa/wells/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ village_code: selectedVillages }),
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      const data = await response.json();
-      console.log("Well points response:", data);
-      const wellPointData: WellPoint[] = data.map((well: any) => ({
-        id: well.FID_clip, // Use FID_clip as the unique identifier
-        name: well.HYDROGRAPH, // Use HYDROGRAPH for well name
-        villageId: well.village_code, // Use village_code from response
-      }));
-      const sortedWellPoints = [...wellPointData].sort((a, b) =>
-        a.name.localeCompare(b.name)
+    if (selectedSubDistricts.length > 0) {
+      const selectedSubDistrictObjects = subDistricts.filter((subDistrict) =>
+        selectedSubDistricts.includes(Number(subDistrict.id))
       );
-      setWellPoints(sortedWellPoints);
-      if (data.length === 0) {
-        setError("No well points found for the selected villages.");
-      }
-    } catch (error: any) {
-      console.error("Error fetching well points:", error);
-      setError(`Failed to fetch well points: ${error.message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  fetchWellPoints();
-}, [selectedVillages]);
-
-  // Fetch raster data when selections are locked
-  useEffect(() => {
-    const fetchRaster = async () => {
-      if (selectionsLocked && selectedSubDistricts.length > 0) {
-        setIsLoading(true);
-        setError(null);
-        try {
-          console.log("Fetching raster data for sub-districts:", selectedSubDistricts);
-          const response = await fetch("/api/stp_operation/stp_visual_display", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              clip: selectedSubDistricts,
-              place: "sub_district",
-            }),
-          });
-          if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
-          }
-          const data = await response.json();
-          console.log("Raster data response:", data);
-          setdisplay_raster(data);
-        } catch (error: any) {
-          console.error("Error fetching raster data:", error);
-          setError(`Failed to fetch raster data: ${error.message}`);
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    };
-    fetchRaster();
-  }, [selectionsLocked, selectedSubDistricts]);
-
-  // Calculate total population based on selected villages
-  useEffect(() => {
-    if (selectedVillages.length > 0) {
-      const selectedVillageObjects = villages.filter((village) =>
-        selectedVillages.includes(Number(village.id))
-      );
-      const total = selectedVillageObjects.reduce(
-        (sum, village) => sum + village.population,
+      const total = selectedSubDistrictObjects.reduce(
+        (sum, subDistrict) => sum + (subDistrict.population || 0),
         0
       );
       setTotalPopulation(total);
     } else {
       setTotalPopulation(0);
     }
-  }, [selectedVillages, villages]);
+  }, [selectedSubDistricts, subDistricts]);
 
   // Handle state selection
   const handleStateChange = (stateId: number): void => {
@@ -460,11 +256,8 @@ useEffect(() => {
     setSelectedState(stateId);
     setSelectedDistricts([]);
     setSelectedSubDistricts([]);
-    setSelectedVillages([]);
-    setSelectedWellPoints([]);
     setTotalPopulation(0);
     setSelectionsLocked(false);
-    setdisplay_raster([]);
   };
 
   // Lock selections and return selected data
@@ -477,23 +270,13 @@ useEffect(() => {
     const selectedSubDistrictObjects = subDistricts.filter((subDistrict) =>
       selectedSubDistricts.includes(Number(subDistrict.id))
     );
-    const selectedVillageObjects = villages.filter((village) =>
-      selectedVillages.includes(Number(village.id))
-    );
-    const selectedWellPointObjects = wellPoints.filter((wellPoint) =>
-      selectedWellPoints.includes(Number(wellPoint.id))
-    );
     console.log("Confirming selections:", {
       subDistricts: selectedSubDistrictObjects,
-      villages: selectedVillageObjects,
-      wellPoints: selectedWellPointObjects,
       totalPopulation,
     });
     setSelectionsLocked(true);
     return {
       subDistricts: selectedSubDistrictObjects,
-      villages: selectedVillageObjects,
-      wellPoints: selectedWellPointObjects,
       totalPopulation,
     };
   };
@@ -504,11 +287,8 @@ useEffect(() => {
     setSelectedState(null);
     setSelectedDistricts([]);
     setSelectedSubDistricts([]);
-    setSelectedVillages([]);
-    setSelectedWellPoints([]);
     setTotalPopulation(0);
     setSelectionsLocked(false);
-    setdisplay_raster([]);
     setError(null);
   };
 
@@ -516,24 +296,16 @@ useEffect(() => {
     states,
     districts,
     subDistricts,
-    villages,
-    wellPoints,
     selectedState,
     selectedDistricts,
     selectedSubDistricts,
-    selectedVillages,
-    selectedWellPoints,
     totalPopulation,
     selectionsLocked,
     isLoading,
     error,
-    display_raster,
-    setdisplay_raster,
     handleStateChange,
     setSelectedDistricts,
     setSelectedSubDistricts,
-    setSelectedVillages,
-    setSelectedWellPoints,
     confirmSelections,
     resetSelections,
   };
