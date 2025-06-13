@@ -276,7 +276,7 @@ const Maping: React.FC = () => {
     setLoading,
   } = useMap();
 
-  const { selectedCategories, setStpProcess,setShowTable,setTableData } = useCategory();
+  const { selectedCategories, setStpProcess, setShowTable, setTableData } = useCategory();
 
   const INDIA_CENTER_LON = 78.9629;
   const INDIA_CENTER_LAT = 20.5937;
@@ -335,7 +335,7 @@ const Maping: React.FC = () => {
       document.removeEventListener("fullscreenchange", handleFullScreenChange);
     };
   }, []);
- 
+
   const changeBaseMap = (baseMapKey: string) => {
     if (!mapInstanceRef.current || !baseLayerRef.current) return;
 
@@ -360,107 +360,107 @@ const Maping: React.FC = () => {
     setSelectedBaseMap(baseMapKey);
   };
 
-  
-   // Add this function inside the Maping component
+
+  // Add this function inside the Maping component
   const captureMap = async (): Promise<string | null> => {
-  if (!mapInstanceRef.current) {
-    console.warn('Map instance not available');
-    return null;
-  }
+    if (!mapInstanceRef.current) {
+      console.warn('Map instance not available');
+      return null;
+    }
 
-  const map = mapInstanceRef.current;
+    const map = mapInstanceRef.current;
 
-  return new Promise((resolve) => {
-    try {
-      // Force a map render and wait for it to complete
-      map.once('rendercomplete', () => {
-        try {
-          const mapCanvas = document.createElement('canvas');
-          const size = map.getSize() || [0, 0];
-          if (size[0] === 0 || size[1] === 0) {
-            console.warn('Invalid map size:', size);
+    return new Promise((resolve) => {
+      try {
+        // Force a map render and wait for it to complete
+        map.once('rendercomplete', () => {
+          try {
+            const mapCanvas = document.createElement('canvas');
+            const size = map.getSize() || [0, 0];
+            if (size[0] === 0 || size[1] === 0) {
+              console.warn('Invalid map size:', size);
+              resolve(null);
+              return;
+            }
+
+            mapCanvas.width = size[0];
+            mapCanvas.height = size[1];
+            const mapContext = mapCanvas.getContext('2d');
+
+            if (!mapContext) {
+              console.warn('Failed to get 2D context for canvas');
+              resolve(null);
+              return;
+            }
+
+            // Collect all canvas elements from the map
+            const canvases = map
+              .getViewport()
+              .querySelectorAll('.ol-layer canvas, canvas.ol-layer');
+
+            let renderedLayers = 0;
+            canvases.forEach((element: Element) => {
+              if (element instanceof HTMLCanvasElement && element.width > 0) {
+                const canvas = element; // Type narrowing to HTMLCanvasElement
+                const opacity =
+                  canvas.parentNode instanceof HTMLElement
+                    ? canvas.parentNode.style.opacity || canvas.style.opacity
+                    : '';
+                mapContext.globalAlpha = opacity === '' ? 1 : Number(opacity);
+
+                let matrix: number[] = [1, 0, 0, 1, 0, 0]; // Default identity matrix
+                const transform = canvas.style.transform;
+                if (transform && transform.includes('matrix')) {
+                  const transformValues = transform
+                    .match(/^matrix\(([^\(]*)\)$/)?.[1]
+                    ?.split(',')
+                    ?.map(Number);
+                  if (transformValues && transformValues.length === 6) {
+                    matrix = transformValues;
+                  }
+                }
+
+                // Apply transform with individual arguments
+                mapContext.setTransform(
+                  matrix[0], // a
+                  matrix[1], // b
+                  matrix[2], // c
+                  matrix[3], // d
+                  matrix[4], // e
+                  matrix[5]  // f
+                );
+                mapContext.drawImage(canvas, 0, 0);
+                renderedLayers++;
+              }
+            });
+
+            mapContext.globalAlpha = 1;
+            mapContext.setTransform(1, 0, 0, 1, 0, 0);
+
+            if (renderedLayers === 0) {
+              console.warn('No valid layers rendered for capture');
+              resolve(null);
+              return;
+            }
+
+            const imageData = mapCanvas.toDataURL('image/png');
+            resolve(imageData);
+          } catch (error) {
+            console.error('Error during map capture:', error);
             resolve(null);
-            return;
           }
+        });
 
-          mapCanvas.width = size[0];
-          mapCanvas.height = size[1];
-          const mapContext = mapCanvas.getContext('2d');
-
-          if (!mapContext) {
-            console.warn('Failed to get 2D context for canvas');
-            resolve(null);
-            return;
-          }
-
-          // Collect all canvas elements from the map
-          const canvases = map
-            .getViewport()
-            .querySelectorAll('.ol-layer canvas, canvas.ol-layer');
-
-          let renderedLayers = 0;
-canvases.forEach((element: Element) => {
-  if (element instanceof HTMLCanvasElement && element.width > 0) {
-    const canvas = element; // Type narrowing to HTMLCanvasElement
-    const opacity =
-      canvas.parentNode instanceof HTMLElement
-        ? canvas.parentNode.style.opacity || canvas.style.opacity
-        : '';
-    mapContext.globalAlpha = opacity === '' ? 1 : Number(opacity);
-
-    let matrix: number[] = [1, 0, 0, 1, 0, 0]; // Default identity matrix
-    const transform = canvas.style.transform;
-    if (transform && transform.includes('matrix')) {
-      const transformValues = transform
-        .match(/^matrix\(([^\(]*)\)$/)?.[1]
-        ?.split(',')
-        ?.map(Number);
-      if (transformValues && transformValues.length === 6) {
-        matrix = transformValues;
+        // Trigger map rendering
+        map.renderSync();
+      } catch (error) {
+        console.error('Error initiating map capture:', error);
+        resolve(null);
       }
-    }
+    });
+  };
 
-    // Apply transform with individual arguments
-    mapContext.setTransform(
-      matrix[0], // a
-      matrix[1], // b
-      matrix[2], // c
-      matrix[3], // d
-      matrix[4], // e
-      matrix[5]  // f
-    );
-    mapContext.drawImage(canvas, 0, 0);
-    renderedLayers++;
-  }
-});
-
-          mapContext.globalAlpha = 1;
-          mapContext.setTransform(1, 0, 0, 1, 0, 0);
-
-          if (renderedLayers === 0) {
-            console.warn('No valid layers rendered for capture');
-            resolve(null);
-            return;
-          }
-
-          const imageData = mapCanvas.toDataURL('image/png');
-          resolve(imageData);
-        } catch (error) {
-          console.error('Error during map capture:', error);
-          resolve(null);
-        }
-      });
-
-      // Trigger map rendering
-      map.renderSync();
-    } catch (error) {
-      console.error('Error initiating map capture:', error);
-      resolve(null);
-    }
-  });
-};
-
- useEffect(() => {
+  useEffect(() => {
     // Expose the capture function globally
     if (typeof window !== 'undefined') {
       (window as any).captureMapImage = captureMap;
@@ -539,7 +539,7 @@ canvases.forEach((element: Element) => {
     from { transform: translateY(-20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
   }
-`;
+    `;
 
     // Create a style element and add it to the document head
     const styleElement = document.createElement("style");
@@ -627,7 +627,7 @@ canvases.forEach((element: Element) => {
 
     // Define primary vector style (blue)
     const primaryVectorStyle = new Style({
-      
+
       stroke: new Stroke({
         color: "#3b82f6",
         width: 2,
@@ -655,8 +655,8 @@ canvases.forEach((element: Element) => {
       updateLoadingState();
     };
 
-    
-    
+
+
     const handleFeaturesLoaded = (event: any) => {
       const numFeatures = event.features ? event.features.length : 0;
       setPrimaryFeatureCount(numFeatures);
@@ -720,10 +720,9 @@ canvases.forEach((element: Element) => {
       `typeName=${defaultWorkspace}:${secondaryLayer}&` +
       "outputFormat=application/json&" +
       "srsname=EPSG:3857&" +
-      `CQL_FILTER=${LayerFilter} IN (${
-        Array.isArray(LayerFilterValue)
-          ? LayerFilterValue.map((v) => `'${v}'`).join(",")
-          : `'${LayerFilterValue}'`
+      `CQL_FILTER=${LayerFilter} IN (${Array.isArray(LayerFilterValue)
+        ? LayerFilterValue.map((v) => `'${v}'`).join(",")
+        : `'${LayerFilterValue}'`
       })`;
 
     const secondaryVectorStyle = new Style({
@@ -891,7 +890,7 @@ canvases.forEach((element: Element) => {
           console.error("STP operation did not return success:", result);
           setError(`STP operation failed: ${result.status || "Unknown error"}`);
           setRasterLoading(false);
-          
+
         }
       } catch (error: any) {
         console.error("Error performing STP operation:", error);
@@ -981,7 +980,7 @@ canvases.forEach((element: Element) => {
         setRasterLayerInfo(item);
       }
     });
-    console.log("new update data",display_raster)
+    console.log("new update data", display_raster)
   }, [selectedradioLayer]);
 
   // Handle opacity change
@@ -1021,11 +1020,11 @@ canvases.forEach((element: Element) => {
       setRasterLoading(false);
       setLegendUrl(null);
       setShowLegend(false);
-      
+
       return;
     }
-    
-  },[display_raster]);
+
+  }, [display_raster]);
   // Move legend position
 
   return (
@@ -1062,11 +1061,10 @@ canvases.forEach((element: Element) => {
           <div className="flex space-x-1 sm:space-x-2">
             <button
               onClick={() => togglePanel("layers")}
-              className={`p-2 sm:p-2.5 rounded-full transition-all duration-200 hover:scale-110 ${
-                activePanel === "layers"
+              className={`p-2 sm:p-2.5 rounded-full transition-all duration-200 hover:scale-110 ${activePanel === "layers"
                   ? "bg-blue-100 text-blue-600 shadow-inner"
                   : "hover:bg-gray-100 text-gray-700"
-              }`}
+                }`}
               title="Layers"
             >
               <svg
@@ -1086,11 +1084,10 @@ canvases.forEach((element: Element) => {
 
             <button
               onClick={() => togglePanel("basemap")}
-              className={`p-2 sm:p-2.5 rounded-full transition-all duration-200 hover:scale-110 ${
-                activePanel === "basemap"
+              className={`p-2 sm:p-2.5 rounded-full transition-all duration-200 hover:scale-110 ${activePanel === "basemap"
                   ? "bg-blue-100 text-blue-600 shadow-inner"
                   : "hover:bg-gray-100 text-gray-700"
-              }`}
+                }`}
               title="Base Maps"
             >
               <svg
@@ -1110,11 +1107,10 @@ canvases.forEach((element: Element) => {
 
             <button
               onClick={() => togglePanel("tools")}
-              className={`p-2 sm:p-2.5 rounded-full transition-all duration-200 hover:scale-110 ${
-                activePanel === "tools"
+              className={`p-2 sm:p-2.5 rounded-full transition-all duration-200 hover:scale-110 ${activePanel === "tools"
                   ? "bg-blue-100 text-blue-600 shadow-inner"
                   : "hover:bg-gray-100 text-gray-700"
-              }`}
+                }`}
               title="Tools"
             >
               <svg
@@ -1194,7 +1190,7 @@ canvases.forEach((element: Element) => {
         </div>
 
         {/* Enhanced Layer Selection Dropdown */}
-        {isPanelOpen &&display_raster.length > 0 && (
+        {isPanelOpen && display_raster.length > 0 && (
           <div className="absolute right-2 sm:right-4 top-16 sm:top-20 bg-white/95 backdrop-blur-md border border-gray-200 rounded-xl shadow-2xl p-4 sm:p-6 w-72 sm:w-80 z-50 animate-in slide-in-from-top-2 duration-300">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-gray-800 flex items-center">
@@ -1316,11 +1312,10 @@ canvases.forEach((element: Element) => {
                 <button
                   key={key}
                   onClick={() => changeBaseMap(key)}
-                  className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl transition-all duration-200 border-2 ${
-                    selectedBaseMap === key
+                  className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl transition-all duration-200 border-2 ${selectedBaseMap === key
                       ? "bg-gradient-to-br from-blue-50 to-blue-100 border-blue-300 text-blue-700 transform scale-105 shadow-lg"
                       : "bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200 hover:border-gray-300 hover:scale-102"
-                  }`}
+                    }`}
                 >
                   <svg
                     className="w-6 h-6 sm:w-8 sm:h-8 mb-2"
@@ -1405,49 +1400,43 @@ canvases.forEach((element: Element) => {
               {/* Secondary Layer with Enhanced Toggle */}
               {secondaryFeatureCount > 0 && (
                 <div
-                  className={`p-4 rounded-xl border transition-all duration-300 hover:shadow-md ${
-                    showSecondaryLayer
+                  className={`p-4 rounded-xl border transition-all duration-300 hover:shadow-md ${showSecondaryLayer
                       ? "bg-gradient-to-r from-green-50 to-emerald-50 border-green-200"
                       : "bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       <div
-                        className={`w-4 h-4 ${
-                          showSecondaryLayer ? "bg-green-500" : "bg-gray-400"
-                        } rounded-full mr-3 shadow-sm transition-colors duration-300`}
+                        className={`w-4 h-4 ${showSecondaryLayer ? "bg-green-500" : "bg-gray-400"
+                          } rounded-full mr-3 shadow-sm transition-colors duration-300`}
                       ></div>
                       <span
-                        className={`font-semibold ${
-                          showSecondaryLayer
+                        className={`font-semibold ${showSecondaryLayer
                             ? "text-green-800"
                             : "text-gray-600"
-                        }`}
+                          }`}
                       >
                         Secondary Layer
                       </span>
                     </div>
                     <div className="flex items-center space-x-3">
                       <span
-                        className={`text-xs px-3 py-1 rounded-full font-medium ${
-                          showSecondaryLayer
+                        className={`text-xs px-3 py-1 rounded-full font-medium ${showSecondaryLayer
                             ? "bg-green-200/80 text-green-800"
                             : "bg-gray-200/80 text-gray-700"
-                        }`}
+                          }`}
                       >
                         {secondaryFeatureCount} features
                       </span>
                       <button
                         onClick={toggleSecondaryLayer}
-                        className={`w-12 h-6 rounded-full ${
-                          showSecondaryLayer ? "bg-green-500" : "bg-gray-300"
-                        } relative transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-400 hover:scale-105`}
+                        className={`w-12 h-6 rounded-full ${showSecondaryLayer ? "bg-green-500" : "bg-gray-300"
+                          } relative transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-400 hover:scale-105`}
                       >
                         <span
-                          className={`block w-5 h-5 mt-0.5 mx-0.5 bg-white rounded-full shadow-md transform transition-transform duration-300 ease-in-out ${
-                            showSecondaryLayer ? "translate-x-6" : ""
-                          }`}
+                          className={`block w-5 h-5 mt-0.5 mx-0.5 bg-white rounded-full shadow-md transform transition-transform duration-300 ease-in-out ${showSecondaryLayer ? "translate-x-6" : ""
+                            }`}
                         />
                       </button>
                     </div>
@@ -1467,11 +1456,10 @@ canvases.forEach((element: Element) => {
                     </div>
                     <button
                       onClick={() => setShowLegend(!showLegend)}
-                      className={`text-xs px-3 py-2 rounded-full transition-all duration-200 font-medium ${
-                        showLegend
+                      className={`text-xs px-3 py-2 rounded-full transition-all duration-200 font-medium ${showLegend
                           ? "bg-purple-200/80 text-purple-800 shadow-inner"
                           : "bg-white/80 text-purple-700 hover:bg-purple-100/80"
-                      }`}
+                        }`}
                     >
                       {showLegend ? "Hide Legend" : "Show Legend"}
                     </button>
@@ -1598,11 +1586,10 @@ canvases.forEach((element: Element) => {
 
               <button
                 onClick={() => setShowLayerList(!showLayerList)}
-                className={`flex flex-col items-center justify-center p-4 rounded-xl transition-all duration-200 border hover:scale-105 hover:shadow-md ${
-                  showLayerList
+                className={`flex flex-col items-center justify-center p-4 rounded-xl transition-all duration-200 border hover:scale-105 hover:shadow-md ${showLayerList
                     ? "bg-gradient-to-br from-blue-50 to-blue-100 text-blue-700 border-blue-200"
                     : "bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 text-gray-700 border-gray-200 hover:border-gray-300"
-                }`}
+                  }`}
               >
                 <svg
                   className="w-8 h-8 mb-2"
@@ -1712,44 +1699,38 @@ canvases.forEach((element: Element) => {
               {/* Enhanced Secondary Layer Toggle in Layer List */}
               {secondaryFeatureCount > 0 && (
                 <div
-                  className={`flex items-center p-3 rounded-lg border transition-all duration-200 ${
-                    showSecondaryLayer
+                  className={`flex items-center p-3 rounded-lg border transition-all duration-200 ${showSecondaryLayer
                       ? "bg-gradient-to-r from-green-50 to-emerald-50 border-green-200"
                       : "bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200"
-                  }`}
+                    }`}
                 >
                   <div
-                    className={`w-3 h-3 ${
-                      showSecondaryLayer ? "bg-green-500" : "bg-gray-400"
-                    } rounded-full mr-3 shadow-sm transition-colors duration-300`}
+                    className={`w-3 h-3 ${showSecondaryLayer ? "bg-green-500" : "bg-gray-400"
+                      } rounded-full mr-3 shadow-sm transition-colors duration-300`}
                   ></div>
                   <span
-                    className={`text-xs font-semibold flex-grow ${
-                      showSecondaryLayer ? "text-green-800" : "text-gray-600"
-                    }`}
+                    className={`text-xs font-semibold flex-grow ${showSecondaryLayer ? "text-green-800" : "text-gray-600"
+                      }`}
                   >
                     Secondary Layer
                   </span>
                   <div className="flex items-center space-x-2">
                     <span
-                      className={`text-xs px-2 py-1 rounded-full font-medium ${
-                        showSecondaryLayer
+                      className={`text-xs px-2 py-1 rounded-full font-medium ${showSecondaryLayer
                           ? "bg-green-200/80 text-green-800"
                           : "bg-gray-200/80 text-gray-700"
-                      }`}
+                        }`}
                     >
                       {secondaryFeatureCount}
                     </span>
                     <button
                       onClick={toggleSecondaryLayer}
-                      className={`w-10 h-5 rounded-full ${
-                        showSecondaryLayer ? "bg-green-500" : "bg-gray-300"
-                      } relative transition-all duration-300 ease-in-out focus:outline-none hover:scale-105`}
+                      className={`w-10 h-5 rounded-full ${showSecondaryLayer ? "bg-green-500" : "bg-gray-300"
+                        } relative transition-all duration-300 ease-in-out focus:outline-none hover:scale-105`}
                     >
                       <span
-                        className={`block w-4 h-4 mt-0.5 mx-0.5 bg-white rounded-full shadow-sm transform transition-transform duration-300 ease-in-out ${
-                          showSecondaryLayer ? "translate-x-5" : ""
-                        }`}
+                        className={`block w-4 h-4 mt-0.5 mx-0.5 bg-white rounded-full shadow-sm transform transition-transform duration-300 ease-in-out ${showSecondaryLayer ? "translate-x-5" : ""
+                          }`}
                       />
                     </button>
                   </div>
@@ -1812,11 +1793,10 @@ canvases.forEach((element: Element) => {
                     <button
                       key={key}
                       onClick={() => changeBaseMap(key)}
-                      className={`p-2 rounded-lg text-xs transition-all duration-200 border ${
-                        selectedBaseMap === key
+                      className={`p-2 rounded-lg text-xs transition-all duration-200 border ${selectedBaseMap === key
                           ? "bg-blue-500 text-white font-semibold border-blue-600 shadow-md"
                           : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-gray-200 hover:border-gray-300"
-                      }`}
+                        }`}
                     >
                       {baseMap.name.substring(0, 4)}
                     </button>

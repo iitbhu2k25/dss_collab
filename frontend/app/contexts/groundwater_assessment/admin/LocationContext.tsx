@@ -211,7 +211,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({
             name: subDistrict.subdistrict_name,
             districtId: parseInt(districtId),
             districtName: districtMap.get(districtId) || "Unknown District",
-ionato: subDistrict.population || 0,
+            population: subDistrict.population || 0, // Fixed typo here
           };
         });
         const sortedSubDistricts = [...subDistrictData].sort((a, b) => {

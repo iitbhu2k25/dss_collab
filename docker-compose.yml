@@ -83,7 +83,31 @@ services:
     env_file:
       - .env
 
+
+  geoserver2:
+    image: kartoza/geoserver:latest
+    container_name: geoserver_secondary
+    ports:
+      - "9091:8080"  # different host port
+    restart: always
+    volumes:
+      - geoserver_data_2:/opt/geoserver/data_dir
+      - ./backend/media_2:/opt/geoserver/medias  # separate media folder
+    environment:
+      - ENABLE_CORS=true
+      - CORS_ENABLED=true
+      - CORS_ALLOWED_ORIGINS=http://localhost:3000
+      - CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,HEAD,OPTIONS
+      - CORS_ALLOWED_HEADERS=*
+      - TOMCAT_EXTRAS=true
+      - HTTP_MAX_HEADER_SIZE=33554432
+      - GEOSERVER_ADMIN_USER=admin
+      - GEOSERVER_ADMIN_PASSWORD=geoserver2
+    env_file:
+      - .env    
+
 volumes:
   postgres_data:
   postgres_cloud_data:
   geoserver_data:
+  geoserver_data_2:
